@@ -10,90 +10,26 @@ const TEXT_EXTENSIONS = new Set(["html", "htm", "css", "js", "mjs", "json", "txt
 const IMAGE_EXTENSIONS = new Set(["png", "jpg", "jpeg", "webp", "gif", "svg", "avif", "bmp", "ico"]);
 const IGNORED_PARTS = new Set([".git", "node_modules", "dist", "build", ".idea", ".vscode"]);
 const MAX_TEXT_FILE_SIZE = 2 * 1024 * 1024;
-const MAX_ZIP_SIZE = 30 * 1024 * 1024;
+const MAX_ZIP_SIZE = 50 * 1024 * 1024;
 
 const FEATURE_DEFINITIONS = [
-    {
-        key: "structure",
-        label: "Estrutura HTML + CSS + JavaScript",
-        severity: "error",
-        solution: "Mantenha pelo menos uma página HTML e os arquivos de estilo e comportamento usados pelo projeto. Eles podem ter nomes diferentes dos arquivos do professor."
-    },
-    {
-        key: "navigation",
-        label: "Navegação entre páginas",
-        severity: "error",
-        solution: "Crie links entre as páginas do site e confira se cada href aponta para um arquivo que realmente existe dentro do projeto."
-    },
-    {
-        key: "products",
-        label: "Catálogo de produtos",
-        severity: "error",
-        solution: "Inclua a área de produtos com informações suficientes para identificá-los, como nome, imagem e preço. A aparência e os produtos podem ser totalmente diferentes do exemplo."
-    },
-    {
-        key: "search",
-        label: "Pesquisa de produtos",
-        severity: "error",
-        solution: "Crie um campo de pesquisa e uma rotina JavaScript que leia o texto digitado e filtre ou localize os produtos exibidos."
-    },
-    {
-        key: "categories",
-        label: "Filtro ou menu de categorias",
-        severity: "error",
-        solution: "Associe os produtos a categorias e use JavaScript para exibir apenas os itens da categoria escolhida. Os nomes das categorias podem ser adaptados à sua loja."
-    },
-    {
-        key: "productDetail",
-        label: "Página ou área de detalhes do produto",
-        severity: "error",
-        solution: "Ao selecionar um produto, leve o identificador ou os dados dele para uma página/área de detalhes e carregue as informações correspondentes."
-    },
-    {
-        key: "variations",
-        label: "Variações, modelos ou tamanhos",
-        severity: "warning",
-        solution: "Quando o tipo de produto exigir, apresente opções como tamanho, modelo, cor ou variação e permita que o usuário selecione uma delas."
-    },
-    {
-        key: "promotions",
-        label: "Área de promoções",
-        severity: "error",
-        solution: "Inclua a área de promoções trabalhada no projeto-base, com produtos/ofertas próprios da sua loja. Não é necessário copiar o layout do professor."
-    },
-    {
-        key: "carousel",
-        label: "Carrossel de promoções",
-        severity: "warning",
-        solution: "Organize os produtos promocionais em um carrossel ou mecanismo equivalente de navegação entre ofertas, com os controles funcionando."
-    },
-    {
-        key: "contact",
-        label: "Página ou área de contato",
-        severity: "error",
-        solution: "Mantenha uma área de contato identificável, com os dados ou campos adequados ao projeto da sua loja."
-    },
-    {
-        key: "lazy",
-        label: "Carregamento otimizado de imagens",
-        severity: "warning",
-        solution: "Nas imagens de produtos que ficam fora da primeira tela, use loading=\"lazy\" quando fizer sentido para reduzir carregamentos desnecessários."
-    }
-];
+    ["structure", "Estrutura HTML + CSS + JavaScript", "error", "Mantenha pelo menos uma página HTML e os arquivos de estilo e comportamento usados pelo projeto."],
+    ["navigation", "Navegação entre páginas", "error", "Confira os links do menu e garanta que cada href aponta para um arquivo existente."],
+    ["products", "Catálogo de produtos", "error", "Inclua uma área de produtos com nome, imagem e preço. Os produtos podem ser diferentes do projeto do professor."],
+    ["search", "Pesquisa de produtos", "error", "Crie um campo de pesquisa e uma rotina JavaScript para localizar ou filtrar os produtos."],
+    ["categories", "Filtro ou menu de categorias", "error", "Associe produtos a categorias e faça o JavaScript filtrar os itens escolhidos."],
+    ["productDetail", "Página ou área de detalhes do produto", "error", "Ao selecionar um produto, abra uma página ou área com as informações correspondentes."],
+    ["variations", "Variações, modelos ou tamanhos", "warning", "Quando fizer sentido para o produto, ofereça tamanhos, modelos, cores ou outras variações."],
+    ["promotions", "Área de promoções", "error", "Inclua a área de promoções trabalhada no projeto-base usando produtos da própria loja."],
+    ["carousel", "Carrossel de promoções", "warning", "Organize as ofertas em carrossel ou em um mecanismo equivalente de navegação."],
+    ["contact", "Página ou área de contato", "error", "Mantenha uma área de contato identificável no projeto."],
+    ["lazy", "Carregamento otimizado de imagens", "warning", "Use loading=\"lazy\" nas imagens de produtos quando fizer sentido."]
+].map(([key, label, severity, solution]) => ({ key, label, severity, solution }));
 
-const FALLBACK_REFERENCE_KEYS = [
-    "structure", "navigation", "products", "search", "categories", "productDetail",
-    "variations", "promotions", "carousel", "contact", "lazy"
-];
+const DEFAULT_KEYS = FEATURE_DEFINITIONS.map(item => item.key);
 
 const state = {
-    reference: {
-        ready: false,
-        online: false,
-        sha: null,
-        files: new Map(),
-        requirements: FEATURE_DEFINITIONS.filter(item => FALLBACK_REFERENCE_KEYS.includes(item.key))
-    },
+    reference: { ready: false, online: false, sha: null, requirements: FEATURE_DEFINITIONS },
     selected: null,
     diagnostics: [],
     analysis: null
@@ -116,256 +52,289 @@ function cacheElements() {
         "resultReferenceInfo", "newAnalysisBtn", "scoreValue", "scoreBar", "scoreMessage",
         "successCount", "warningCount", "errorCount", "diagnosticFilter", "diagnosticsList",
         "fileSummary", "requirementsSummary"
-    ].forEach(id => {
-        els[id] = document.getElementById(id);
-    });
+    ].forEach(id => { els[id] = document.getElementById(id); });
 }
 
 function bindEvents() {
+    if (!els.chooseZipBtn || !els.chooseFolderBtn || !els.zipInput || !els.folderInput) {
+        console.error("CodeFix: elementos de upload não encontrados.");
+        return;
+    }
+
     els.chooseZipBtn.addEventListener("click", event => {
+        event.preventDefault();
         event.stopPropagation();
+        els.zipInput.value = "";
         els.zipInput.click();
     });
 
-    els.chooseFolderBtn.addEventListener("click", event => {
+    els.chooseFolderBtn.addEventListener("click", async event => {
+        event.preventDefault();
         event.stopPropagation();
-        els.folderInput.click();
+        await chooseFolder();
     });
 
-    els.dropZone.addEventListener("click", event => {
+    els.zipInput.addEventListener("change", async event => {
+        const file = event.target.files?.[0];
+        if (file) await loadZip(file);
+    });
+
+    els.folderInput.addEventListener("change", async event => {
+        const files = event.target.files;
+        if (files?.length) await loadFolderFileList(files);
+    });
+
+    els.dropZone?.addEventListener("click", event => {
         if (event.target.closest("button")) return;
+        els.zipInput.value = "";
         els.zipInput.click();
     });
 
-    els.dropZone.addEventListener("keydown", event => {
+    els.dropZone?.addEventListener("keydown", event => {
         if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
+            els.zipInput.value = "";
             els.zipInput.click();
         }
     });
 
-    ["dragenter", "dragover"].forEach(type => {
-        els.dropZone.addEventListener(type, event => {
-            event.preventDefault();
-            els.dropZone.classList.add("dragging");
-        });
-    });
+    ["dragenter", "dragover"].forEach(type => els.dropZone?.addEventListener(type, event => {
+        event.preventDefault();
+        els.dropZone.classList.add("dragging");
+    }));
 
-    ["dragleave", "drop"].forEach(type => {
-        els.dropZone.addEventListener(type, event => {
-            event.preventDefault();
-            els.dropZone.classList.remove("dragging");
-        });
-    });
+    ["dragleave", "drop"].forEach(type => els.dropZone?.addEventListener(type, event => {
+        event.preventDefault();
+        els.dropZone.classList.remove("dragging");
+    }));
 
-    els.dropZone.addEventListener("drop", async event => {
-        const file = event.dataTransfer.files?.[0];
-        if (!file) return;
-        if (!file.name.toLowerCase().endsWith(".zip")) {
-            setUploadMessage("Ao arrastar, envie um arquivo .ZIP. Para uma pasta, use o botão ‘Selecionar pasta’.", true);
+    els.dropZone?.addEventListener("drop", async event => {
+        const items = Array.from(event.dataTransfer?.items || []);
+        const firstFile = event.dataTransfer?.files?.[0];
+
+        if (firstFile?.name?.toLowerCase().endsWith(".zip")) {
+            await loadZip(firstFile);
             return;
         }
-        await loadZip(file);
-    });
 
-    els.zipInput.addEventListener("change", async () => {
-        const file = els.zipInput.files?.[0];
-        if (file) await loadZip(file);
-    });
-
-    els.folderInput.addEventListener("change", async () => {
-        if (els.folderInput.files?.length) {
-            await loadFolder(els.folderInput.files);
+        const dirItem = items.find(item => item.kind === "file" && item.webkitGetAsEntry?.()?.isDirectory);
+        if (dirItem) {
+            setUploadMessage("Para garantir que todas as subpastas sejam lidas, use o botão ‘Selecionar pasta’.", true);
+            return;
         }
+
+        setUploadMessage("Arraste um .ZIP ou use ‘Selecionar pasta’ para enviar a pasta já extraída.", true);
     });
 
-    els.analyzeBtn.addEventListener("click", runAnalysis);
-    els.syncReferenceBtn.addEventListener("click", () => syncReference(true));
-    els.diagnosticFilter.addEventListener("change", renderDiagnostics);
-    els.newAnalysisBtn.addEventListener("click", resetForNewAnalysis);
+    els.analyzeBtn?.addEventListener("click", runAnalysis);
+    els.syncReferenceBtn?.addEventListener("click", () => syncReference(true));
+    els.diagnosticFilter?.addEventListener("change", renderDiagnostics);
+    els.newAnalysisBtn?.addEventListener("click", resetForNewAnalysis);
 }
 
-async function syncReference(userRequested = false) {
-    setReferenceStatus("loading", "Sincronizando...", "Buscando a versão atual da branch main");
-    els.syncReferenceBtn.disabled = true;
+async function chooseFolder() {
+    setUploadMessage("Selecione a pasta principal do seu projeto.", false);
 
-    try {
-        const response = await fetch(REFERENCE.apiTree, { cache: "no-store" });
-        if (!response.ok) throw new Error(`GitHub respondeu ${response.status}`);
-
-        const data = await response.json();
-        const codeEntries = (data.tree || []).filter(entry => {
-            if (entry.type !== "blob") return false;
-            const ext = getExtension(entry.path);
-            return ["html", "htm", "css", "js", "mjs"].includes(ext);
-        });
-
-        const referenceFiles = new Map();
-        const settled = await Promise.allSettled(codeEntries.map(async entry => {
-            const url = REFERENCE.rawBase + encodePathForUrl(entry.path);
-            const fileResponse = await fetch(url, { cache: "no-store" });
-            if (!fileResponse.ok) throw new Error(`Falha ao ler ${entry.path}`);
-            const content = await fileResponse.text();
-            return [normalizePath(entry.path), { path: normalizePath(entry.path), content, size: content.length }];
-        }));
-
-        settled.forEach(result => {
-            if (result.status === "fulfilled") {
-                referenceFiles.set(result.value[0], result.value[1]);
-            }
-        });
-
-        if (!referenceFiles.size) throw new Error("Nenhum arquivo de código da referência pôde ser lido.");
-
-        const features = detectFeatures(referenceFiles);
-        const requirements = FEATURE_DEFINITIONS.filter(item => features[item.key]);
-
-        state.reference = {
-            ready: true,
-            online: true,
-            sha: data.sha || null,
-            files: referenceFiles,
-            requirements: requirements.length ? requirements : FEATURE_DEFINITIONS.filter(item => FALLBACK_REFERENCE_KEYS.includes(item.key))
-        };
-
-        const shortSha = state.reference.sha ? state.reference.sha.slice(0, 7) : "atual";
-        setReferenceStatus(
-            "ready",
-            "Referência atualizada",
-            `Versão ${shortSha} • ${referenceFiles.size} arquivos de código lidos`
-        );
-
+    if (typeof window.showDirectoryPicker === "function") {
         try {
-            localStorage.setItem("codefix-reference-cache", JSON.stringify({
-                sha: state.reference.sha,
-                requirementKeys: state.reference.requirements.map(item => item.key),
-                savedAt: Date.now()
-            }));
-        } catch (_) {
-            // O cache é apenas uma conveniência; a análise continua sem ele.
+            const handle = await window.showDirectoryPicker({ mode: "read" });
+            const raw = new Map();
+            await readDirectoryHandle(handle, "", raw);
+            setSelectedProject(handle.name || "Pasta do projeto", raw, "folder");
+            return;
+        } catch (error) {
+            if (error?.name === "AbortError") return;
+            console.warn("CodeFix: seletor moderno de pasta falhou, usando modo compatível.", error);
         }
+    }
 
-        if (userRequested) setUploadMessage("Projeto-base atualizado com sucesso.", false);
-    } catch (error) {
-        applyCachedOrFallbackReference(error);
-    } finally {
-        els.syncReferenceBtn.disabled = false;
+    els.folderInput.value = "";
+    els.folderInput.click();
+}
+
+async function readDirectoryHandle(directoryHandle, prefix, raw) {
+    for await (const [name, handle] of directoryHandle.entries()) {
+        if (IGNORED_PARTS.has(name) || name === ".DS_Store" || name === "Thumbs.db") continue;
+        const path = normalizePath(prefix ? `${prefix}/${name}` : name);
+        if (handle.kind === "directory") {
+            await readDirectoryHandle(handle, path, raw);
+        } else if (handle.kind === "file") {
+            const file = await handle.getFile();
+            raw.set(path, await browserFileToRecord(file, path));
+        }
     }
 }
 
-function applyCachedOrFallbackReference(error) {
-    let cache = null;
-    try {
-        cache = JSON.parse(localStorage.getItem("codefix-reference-cache") || "null");
-    } catch (_) {
-        cache = null;
-    }
-
-    if (cache?.requirementKeys?.length) {
-        state.reference = {
-            ready: true,
-            online: false,
-            sha: cache.sha || null,
-            files: new Map(),
-            requirements: FEATURE_DEFINITIONS.filter(item => cache.requirementKeys.includes(item.key))
-        };
-        const shortSha = cache.sha ? cache.sha.slice(0, 7) : "salva";
-        setReferenceStatus("offline", "Usando referência salva", `Versão ${shortSha} • sincronização online indisponível`);
-    } else {
-        state.reference = {
-            ready: true,
-            online: false,
-            sha: null,
-            files: new Map(),
-            requirements: FEATURE_DEFINITIONS.filter(item => FALLBACK_REFERENCE_KEYS.includes(item.key))
-        };
-        setReferenceStatus("offline", "Referência local", "GitHub indisponível • usando requisitos conhecidos do projeto-base");
-    }
-
-    console.warn("CodeFix: não foi possível sincronizar a referência.", error);
-}
-
-function setReferenceStatus(className, label, detail) {
-    els.referenceBadge.className = `badge ${className}`;
-    els.referenceBadge.textContent = label;
-    els.referenceCommit.textContent = detail;
-}
-
-async function loadFolder(fileList) {
+async function loadFolderFileList(fileList) {
     setUploadMessage("Lendo a pasta do projeto...", false);
     try {
-        const raw = new Map();
         const files = Array.from(fileList);
+        const raw = new Map();
 
-        await Promise.all(files.map(async file => {
+        for (const file of files) {
             const originalPath = file.webkitRelativePath || file.name;
             const path = normalizePath(originalPath);
-            if (shouldIgnorePath(path)) return;
+            if (!path || shouldIgnorePath(path)) continue;
             raw.set(path, await browserFileToRecord(file, path));
-        }));
+        }
 
         const projectName = detectTopFolder(files.map(file => file.webkitRelativePath || file.name)) || "Pasta do projeto";
         setSelectedProject(projectName, stripCommonRoot(raw), "folder");
     } catch (error) {
         console.error(error);
-        setUploadMessage("Não consegui ler a pasta selecionada. Tente novamente ou envie um .ZIP.", true);
+        setUploadMessage("Não consegui ler essa pasta. Tente novamente ou compacte a pasta em .ZIP.", true);
     }
 }
 
 async function loadZip(file) {
-    setUploadMessage("Abrindo o arquivo .ZIP...", false);
+    setUploadMessage(`Abrindo ${file.name}...`, false);
 
-    if (file.size > MAX_ZIP_SIZE) {
-        setUploadMessage("O .ZIP ultrapassa 30 MB. Remova arquivos desnecessários e tente novamente.", true);
+    if (!file.name.toLowerCase().endsWith(".zip")) {
+        setUploadMessage("Selecione um arquivo com extensão .ZIP.", true);
         return;
     }
 
-    if (!window.JSZip) {
-        setUploadMessage("O leitor de .ZIP não carregou. Use ‘Selecionar pasta’ ou recarregue a página com internet.", true);
+    if (file.size > MAX_ZIP_SIZE) {
+        setUploadMessage("O .ZIP ultrapassa 50 MB. Remova arquivos desnecessários e tente novamente.", true);
         return;
     }
 
     try {
-        const zip = await JSZip.loadAsync(file);
-        const entries = Object.values(zip.files).filter(entry => !entry.dir && !shouldIgnorePath(entry.name));
-        const raw = new Map();
-
-        await Promise.all(entries.map(async entry => {
-            const path = normalizePath(entry.name);
-            const ext = getExtension(path);
-            let content = null;
-
-            if (TEXT_EXTENSIONS.has(ext)) {
-                content = await entry.async("string");
-                if (content.length > MAX_TEXT_FILE_SIZE) content = null;
+        let raw;
+        if (window.JSZip) {
+            try {
+                raw = await readZipWithJSZip(file);
+            } catch (error) {
+                console.warn("CodeFix: JSZip falhou, usando leitor nativo.", error);
+                raw = await readZipNative(file);
             }
-
-            raw.set(path, { path, content, size: content ? content.length : 0 });
-        }));
+        } else {
+            raw = await readZipNative(file);
+        }
 
         const name = file.name.replace(/\.zip$/i, "") || "Projeto compactado";
         setSelectedProject(name, stripCommonRoot(raw), "zip");
     } catch (error) {
         console.error(error);
-        setUploadMessage("Não consegui abrir esse .ZIP. Verifique se ele não está corrompido e tente novamente.", true);
+        setUploadMessage("Não consegui abrir esse .ZIP. Tente compactar a pasta novamente ou use ‘Selecionar pasta’.", true);
     }
+}
+
+async function readZipWithJSZip(file) {
+    const zip = await window.JSZip.loadAsync(file);
+    const raw = new Map();
+    const entries = Object.values(zip.files).filter(entry => !entry.dir && !shouldIgnorePath(entry.name));
+
+    for (const entry of entries) {
+        const path = normalizePath(entry.name);
+        const ext = getExtension(path);
+        let content = null;
+        let size = 0;
+
+        if (TEXT_EXTENSIONS.has(ext)) {
+            content = await entry.async("string");
+            size = new Blob([content]).size;
+            if (size > MAX_TEXT_FILE_SIZE) content = null;
+        } else {
+            const data = await entry.async("uint8array");
+            size = data.byteLength;
+        }
+        raw.set(path, { path, content, size });
+    }
+    return raw;
+}
+
+async function readZipNative(file) {
+    const buffer = await file.arrayBuffer();
+    const view = new DataView(buffer);
+    const bytes = new Uint8Array(buffer);
+    const eocd = findEndOfCentralDirectory(view);
+    if (eocd < 0) throw new Error("Estrutura ZIP inválida.");
+
+    const totalEntries = view.getUint16(eocd + 10, true);
+    let offset = view.getUint32(eocd + 16, true);
+    const decoder = new TextDecoder("utf-8");
+    const raw = new Map();
+
+    for (let i = 0; i < totalEntries; i += 1) {
+        if (view.getUint32(offset, true) !== 0x02014b50) throw new Error("Diretório central inválido.");
+
+        const flags = view.getUint16(offset + 8, true);
+        const method = view.getUint16(offset + 10, true);
+        const compressedSize = view.getUint32(offset + 20, true);
+        const uncompressedSize = view.getUint32(offset + 24, true);
+        const nameLength = view.getUint16(offset + 28, true);
+        const extraLength = view.getUint16(offset + 30, true);
+        const commentLength = view.getUint16(offset + 32, true);
+        const localOffset = view.getUint32(offset + 42, true);
+        const nameBytes = bytes.slice(offset + 46, offset + 46 + nameLength);
+        const name = decoder.decode(nameBytes);
+        const path = normalizePath(name);
+
+        offset += 46 + nameLength + extraLength + commentLength;
+
+        if (!path || name.endsWith("/") || shouldIgnorePath(path)) continue;
+        if (flags & 0x1) throw new Error("ZIP protegido por senha não é suportado.");
+        if (view.getUint32(localOffset, true) !== 0x04034b50) throw new Error("Entrada ZIP inválida.");
+
+        const localNameLength = view.getUint16(localOffset + 26, true);
+        const localExtraLength = view.getUint16(localOffset + 28, true);
+        const dataStart = localOffset + 30 + localNameLength + localExtraLength;
+        const compressed = bytes.slice(dataStart, dataStart + compressedSize);
+        const ext = getExtension(path);
+        let content = null;
+
+        if (TEXT_EXTENSIONS.has(ext) && uncompressedSize <= MAX_TEXT_FILE_SIZE) {
+            const unpacked = await decompressZipEntry(compressed, method);
+            content = decoder.decode(unpacked);
+        }
+
+        raw.set(path, { path, content, size: uncompressedSize });
+    }
+
+    return raw;
+}
+
+function findEndOfCentralDirectory(view) {
+    const min = Math.max(0, view.byteLength - 65557);
+    for (let i = view.byteLength - 22; i >= min; i -= 1) {
+        if (view.getUint32(i, true) === 0x06054b50) return i;
+    }
+    return -1;
+}
+
+async function decompressZipEntry(compressed, method) {
+    if (method === 0) return compressed;
+    if (method !== 8) throw new Error(`Método de compactação ZIP ${method} não suportado.`);
+    if (typeof DecompressionStream !== "function") {
+        throw new Error("Este navegador não oferece descompactação nativa.");
+    }
+
+    const stream = new Blob([compressed]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+    return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 
 async function browserFileToRecord(file, path) {
     const ext = getExtension(path);
     let content = null;
-
-    if (TEXT_EXTENSIONS.has(ext) && file.size <= MAX_TEXT_FILE_SIZE) {
-        content = await file.text();
-    }
-
+    if (TEXT_EXTENSIONS.has(ext) && file.size <= MAX_TEXT_FILE_SIZE) content = await file.text();
     return { path, content, size: file.size };
 }
 
 function setSelectedProject(name, files, source) {
-    if (!files.size) {
-        setUploadMessage("A seleção não contém arquivos úteis para analisar.", true);
+    if (!files?.size) {
+        state.selected = null;
+        els.analyzeBtn.disabled = true;
+        els.selectedProject?.classList.add("hidden");
+        setUploadMessage("A pasta/ZIP foi aberta, mas nenhum arquivo útil foi encontrado.", true);
         return;
+    }
+
+    const inventory = buildInventory(files);
+    if (!inventory.html.length && !inventory.css.length && !inventory.js.length) {
+        setUploadMessage("Arquivos recebidos, mas não encontrei HTML, CSS ou JavaScript. Confira se você selecionou a pasta correta.", true);
+    } else {
+        setUploadMessage(`Projeto recebido: ${inventory.html.length} HTML, ${inventory.css.length} CSS e ${inventory.js.length} JavaScript.`, false);
     }
 
     state.selected = { name, files, source };
@@ -374,24 +343,69 @@ function setSelectedProject(name, files, source) {
     els.selectedProject.classList.remove("hidden");
     els.analyzeBtn.disabled = false;
     els.resultsSection.classList.add("hidden");
-    setUploadMessage("Projeto pronto para análise.", false);
 }
 
-function setUploadMessage(message, isError) {
-    els.uploadMessage.textContent = message;
-    els.uploadMessage.classList.toggle("error", Boolean(isError));
+async function syncReference(userRequested = false) {
+    setReferenceStatus("loading", "Sincronizando...", "Buscando a versão atual da branch main");
+    if (els.syncReferenceBtn) els.syncReferenceBtn.disabled = true;
+
+    try {
+        const response = await fetch(REFERENCE.apiTree, { cache: "no-store" });
+        if (!response.ok) throw new Error(`GitHub respondeu ${response.status}`);
+        const data = await response.json();
+        const codeEntries = (data.tree || []).filter(entry => entry.type === "blob" && ["html", "htm", "css", "js", "mjs"].includes(getExtension(entry.path)));
+        const referenceFiles = new Map();
+
+        const settled = await Promise.allSettled(codeEntries.map(async entry => {
+            const responseFile = await fetch(REFERENCE.rawBase + encodePathForUrl(entry.path), { cache: "no-store" });
+            if (!responseFile.ok) throw new Error(entry.path);
+            const content = await responseFile.text();
+            return [normalizePath(entry.path), { path: normalizePath(entry.path), content, size: content.length }];
+        }));
+
+        settled.forEach(result => {
+            if (result.status === "fulfilled") referenceFiles.set(result.value[0], result.value[1]);
+        });
+
+        const features = referenceFiles.size ? detectFeatures(referenceFiles) : {};
+        const requirements = FEATURE_DEFINITIONS.filter(item => features[item.key]);
+        state.reference = {
+            ready: true,
+            online: true,
+            sha: data.sha || null,
+            requirements: requirements.length ? requirements : FEATURE_DEFINITIONS
+        };
+
+        const shortSha = state.reference.sha ? state.reference.sha.slice(0, 7) : "atual";
+        setReferenceStatus("ready", "Referência atualizada", `Versão ${shortSha} • ${codeEntries.length} arquivos de código`);
+        if (userRequested) setUploadMessage("Projeto-base atualizado com sucesso.", false);
+    } catch (error) {
+        console.warn("CodeFix: referência online indisponível.", error);
+        state.reference = { ready: true, online: false, sha: null, requirements: FEATURE_DEFINITIONS };
+        setReferenceStatus("offline", "Referência local", "Usando os requisitos conhecidos do projeto-base");
+    } finally {
+        if (els.syncReferenceBtn) els.syncReferenceBtn.disabled = false;
+    }
+}
+
+function setReferenceStatus(className, label, detail) {
+    if (!els.referenceBadge || !els.referenceCommit) return;
+    els.referenceBadge.className = `badge ${className}`;
+    els.referenceBadge.textContent = label;
+    els.referenceCommit.textContent = detail;
 }
 
 async function runAnalysis() {
-    if (!state.selected) return;
+    if (!state.selected) {
+        setUploadMessage("Selecione primeiro o ZIP ou a pasta do projeto.", true);
+        return;
+    }
 
     els.analyzeBtn.disabled = true;
     els.resultsSection.classList.add("hidden");
     els.analysisProgress.classList.remove("hidden");
     els.progressTitle.textContent = "Lendo os arquivos do projeto...";
-    els.progressText.textContent = "Separando HTML, CSS, JavaScript e recursos do site.";
-    els.analysisProgress.scrollIntoView({ behavior: "smooth", block: "center" });
-
+    els.progressText.textContent = "Separando HTML, CSS, JavaScript e imagens.";
     await nextPaint();
 
     try {
@@ -403,10 +417,6 @@ async function runAnalysis() {
         state.analysis = result;
         state.diagnostics = result.diagnostics;
 
-        els.progressTitle.textContent = "Comparando com o projeto-base...";
-        els.progressText.textContent = "Verificando as funcionalidades já trabalhadas em aula sem exigir código idêntico.";
-        await new Promise(resolve => setTimeout(resolve, 120));
-
         renderResults(result);
         els.analysisProgress.classList.add("hidden");
         els.resultsSection.classList.remove("hidden");
@@ -415,102 +425,68 @@ async function runAnalysis() {
         console.error(error);
         els.analysisProgress.classList.add("hidden");
         els.analyzeBtn.disabled = false;
-        setUploadMessage("Ocorreu um problema durante a análise. Tente selecionar o projeto novamente.", true);
+        setUploadMessage("O projeto foi recebido, mas ocorreu um erro durante a análise. Tente novamente.", true);
     }
 }
 
-function analyzeProject(files, referenceRequirements) {
+function analyzeProject(files, requirements) {
     const diagnostics = [];
     const inventory = buildInventory(files);
-    const allPaths = Array.from(files.keys());
-    const lowerPathMap = new Map(allPaths.map(path => [path.toLowerCase(), path]));
-    const htmlIdSet = new Set();
-    const htmlDocuments = [];
-    const inlineJsParts = [];
-    const technical = {
-        brokenReferences: 0,
-        caseWarnings: 0,
-        unresolvedFunctions: 0,
-        unresolvedIds: 0,
-        jsSyntaxErrors: 0,
-        duplicateIds: 0,
-        cssBraceProblems: 0
-    };
+    const paths = [...files.keys()];
+    const lowerMap = new Map(paths.map(path => [path.toLowerCase(), path]));
+    const allIds = new Set();
+    const htmlDocs = [];
+    const inlineJs = [];
 
     if (!inventory.html.length) {
-        pushDiagnostic(diagnostics, "error", "Nenhuma página HTML encontrada", "Estrutura do projeto", "O CodeFix não encontrou arquivos .html ou .htm.", "Inclua pelo menos a página HTML principal do seu site dentro da pasta enviada.");
+        addDiag(diagnostics, "error", "Nenhuma página HTML encontrada", "Estrutura", "Não encontrei arquivos .html ou .htm.", "Inclua a página HTML principal dentro da pasta enviada.");
     } else {
-        pushDiagnostic(diagnostics, "success", "Páginas HTML encontradas", "Estrutura do projeto", `${inventory.html.length} página(s) HTML disponível(is) para análise.`, "Nenhuma correção é necessária neste item.");
+        addDiag(diagnostics, "success", "Páginas HTML encontradas", "Estrutura", `${inventory.html.length} página(s) HTML encontrada(s).`, "Nenhuma correção necessária.");
     }
 
     inventory.html.forEach(path => {
-        const record = files.get(path);
-        if (!record?.content) {
-            pushDiagnostic(diagnostics, "warning", "Arquivo HTML não pôde ser lido", path, "O arquivo existe, mas é grande demais ou não pôde ser interpretado como texto.", "Abra o arquivo e verifique se ele contém somente o código HTML necessário.");
-            return;
+        const content = files.get(path)?.content;
+        if (!content) return;
+        const doc = new DOMParser().parseFromString(content, "text/html");
+        htmlDocs.push({ path, doc });
+
+        if (!/<!doctype\s+html/i.test(content)) {
+            addDiag(diagnostics, "warning", "DOCTYPE não identificado", path, "A declaração <!DOCTYPE html> não foi localizada.", "Adicione <!DOCTYPE html> antes da tag <html>.");
         }
 
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(record.content, "text/html");
-        htmlDocuments.push({ path, doc, content: record.content });
-
-        if (!/<!doctype\s+html/i.test(record.content)) {
-            pushDiagnostic(diagnostics, "warning", "DOCTYPE não identificado", path, "A declaração <!DOCTYPE html> não foi localizada no início da página.", "Adicione <!DOCTYPE html> antes da tag <html> para o navegador usar o modo padrão do HTML5.");
-        }
-
-        const idsInFile = new Set();
-        doc.querySelectorAll("[id]").forEach(element => {
-            const id = element.id?.trim();
+        const localIds = new Set();
+        doc.querySelectorAll("[id]").forEach(el => {
+            const id = el.id?.trim();
             if (!id) return;
-            htmlIdSet.add(id);
-            if (idsInFile.has(id)) {
-                technical.duplicateIds += 1;
-                pushDiagnostic(diagnostics, "warning", `ID duplicado: #${id}`, path, "O mesmo ID aparece mais de uma vez nesta página. IDs devem identificar um único elemento.", `Mantenha o ID “${id}” em apenas um elemento ou troque os demais por classes/IDs diferentes.`);
-            }
-            idsInFile.add(id);
+            allIds.add(id);
+            if (localIds.has(id)) addDiag(diagnostics, "warning", `ID duplicado: #${id}`, path, "O mesmo ID aparece mais de uma vez.", "Use esse ID em apenas um elemento ou troque os demais por classes/IDs diferentes.");
+            localIds.add(id);
         });
 
         doc.querySelectorAll("script:not([src])").forEach(script => {
-            if (script.textContent?.trim()) inlineJsParts.push(script.textContent);
+            if (script.textContent?.trim()) inlineJs.push(script.textContent);
         });
 
-        analyzeHtmlReferences(path, doc, files, lowerPathMap, allPaths, diagnostics, technical);
+        analyzeReferences(path, doc, files, lowerMap, paths, diagnostics);
     });
 
-    const jsCombined = [
-        ...inventory.js.map(path => files.get(path)?.content || ""),
-        ...inlineJsParts
-    ].join("\n\n");
+    const jsCombined = [...inventory.js.map(path => files.get(path)?.content || ""), ...inlineJs].join("\n");
+    analyzeJavaScript(inventory.js, files, jsCombined, allIds, htmlDocs, diagnostics);
+    analyzeCss(inventory.css, files, diagnostics);
 
-    analyzeJavascript(inventory.js, files, jsCombined, htmlIdSet, diagnostics, technical);
-    analyzeInlineHandlers(htmlDocuments, jsCombined, diagnostics, technical);
-    analyzeCss(inventory.css, files, diagnostics, technical);
+    if (inventory.css.length) addDiag(diagnostics, "success", "Arquivos CSS encontrados", "Estrutura", `${inventory.css.length} arquivo(s) CSS encontrado(s).`, "Nenhuma correção necessária.");
+    if (inventory.js.length) addDiag(diagnostics, "success", "Arquivos JavaScript encontrados", "Estrutura", `${inventory.js.length} arquivo(s) JavaScript encontrado(s).`, "Nenhuma correção necessária.");
+    if (inventory.images.length) addDiag(diagnostics, "success", "Imagens encontradas", "Estrutura", `${inventory.images.length} imagem(ns) encontrada(s).`, "Nenhuma correção necessária.");
 
-    addAggregateTechnicalDiagnostics(diagnostics, inventory, technical);
-
-    const studentFeatures = detectFeatures(files);
-    const requirements = (referenceRequirements?.length ? referenceRequirements : FEATURE_DEFINITIONS.filter(item => FALLBACK_REFERENCE_KEYS.includes(item.key))).map(requirement => {
-        const met = Boolean(studentFeatures[requirement.key]);
+    const features = detectFeatures(files);
+    const reqs = (requirements?.length ? requirements : FEATURE_DEFINITIONS).map(req => {
+        const met = Boolean(features[req.key]);
         if (met) {
-            pushDiagnostic(
-                diagnostics,
-                "success",
-                requirement.label,
-                "Comparação com o projeto-base",
-                "O CodeFix identificou este recurso no projeto. A implementação pode ser diferente da utilizada pelo professor.",
-                "Nenhuma correção é necessária neste item."
-            );
+            addDiag(diagnostics, "success", req.label, "Comparação com o projeto-base", "Esse recurso foi identificado no projeto, mesmo que a implementação seja diferente da do professor.", "Nenhuma correção necessária.");
         } else {
-            pushDiagnostic(
-                diagnostics,
-                requirement.severity,
-                `${requirement.label} não identificado`,
-                "Comparação com o projeto-base",
-                "Esse recurso aparece na versão atual de referência, mas não foi possível identificá-lo de forma confiável no projeto enviado.",
-                requirement.solution
-            );
+            addDiag(diagnostics, req.severity, `${req.label} não identificado`, "Comparação com o projeto-base", "Esse recurso existe na referência atual, mas não foi possível identificá-lo com segurança no projeto enviado.", req.solution);
         }
-        return { ...requirement, met };
+        return { ...req, met };
     });
 
     const counts = diagnostics.reduce((acc, item) => {
@@ -518,275 +494,138 @@ function analyzeProject(files, referenceRequirements) {
         return acc;
     }, { success: 0, warning: 0, error: 0 });
 
-    const score = calculateScore(counts, requirements.length);
-
-    return {
-        diagnostics,
-        counts,
-        score,
-        inventory,
-        requirements,
-        features: studentFeatures,
-        technical
-    };
+    const score = Math.max(0, Math.min(100, 100 - counts.error * 7 - counts.warning * 2));
+    return { diagnostics, inventory, requirements: reqs, features, counts, score };
 }
 
-function buildInventory(files) {
-    const result = { total: files.size, html: [], css: [], js: [], images: [], other: [] };
-    for (const path of files.keys()) {
-        const ext = getExtension(path);
-        if (["html", "htm"].includes(ext)) result.html.push(path);
-        else if (ext === "css") result.css.push(path);
-        else if (["js", "mjs"].includes(ext)) result.js.push(path);
-        else if (IMAGE_EXTENSIONS.has(ext)) result.images.push(path);
-        else result.other.push(path);
-    }
-    return result;
-}
+function analyzeReferences(htmlPath, doc, files, lowerMap, paths, diagnostics) {
+    const refs = [];
+    doc.querySelectorAll("script[src]").forEach(el => refs.push([el.getAttribute("src"), "JavaScript", true]));
+    doc.querySelectorAll('link[rel~="stylesheet"][href]').forEach(el => refs.push([el.getAttribute("href"), "CSS", true]));
+    doc.querySelectorAll("img[src], source[src], video[poster]").forEach(el => refs.push([el.getAttribute("src") || el.getAttribute("poster"), "imagem", true]));
+    doc.querySelectorAll("a[href]").forEach(el => refs.push([el.getAttribute("href"), "link", false]));
 
-function analyzeHtmlReferences(htmlPath, doc, files, lowerPathMap, allPaths, diagnostics, technical) {
-    const references = [];
-
-    doc.querySelectorAll("script[src]").forEach(element => references.push({ value: element.getAttribute("src"), kind: "JavaScript", critical: true }));
-    doc.querySelectorAll('link[rel~="stylesheet"][href]').forEach(element => references.push({ value: element.getAttribute("href"), kind: "CSS", critical: true }));
-    doc.querySelectorAll("img[src], source[src], video[poster]").forEach(element => references.push({ value: element.getAttribute("src") || element.getAttribute("poster"), kind: "imagem", critical: true }));
-    doc.querySelectorAll("a[href]").forEach(element => references.push({ value: element.getAttribute("href"), kind: "link", critical: false }));
-
-    references.forEach(reference => {
-        const raw = (reference.value || "").trim();
-        if (isExternalOrSpecialReference(raw)) return;
-
+    refs.forEach(([rawValue, kind, critical]) => {
+        const raw = (rawValue || "").trim();
+        if (!raw || isExternalOrSpecial(raw)) return;
         const resolved = resolveRelativePath(htmlPath, raw);
-        if (!resolved) return;
+        if (!resolved || files.has(resolved)) return;
 
-        if (files.has(resolved)) return;
-
-        const caseMatch = lowerPathMap.get(resolved.toLowerCase());
+        const caseMatch = lowerMap.get(resolved.toLowerCase());
         if (caseMatch) {
-            technical.caseWarnings += 1;
-            pushDiagnostic(
-                diagnostics,
-                "warning",
-                `Diferença de maiúsculas/minúsculas em caminho de ${reference.kind}`,
-                htmlPath,
-                `O código aponta para “${raw}”, mas o arquivo encontrado é “${caseMatch}”. Isso pode funcionar no Windows e falhar ao publicar o site.`,
-                `Ajuste o caminho para usar exatamente o mesmo nome do arquivo: “${relativeSuggestion(htmlPath, caseMatch)}”.`
-            );
+            addDiag(diagnostics, "warning", `Maiúsculas/minúsculas diferentes no caminho de ${kind}`, htmlPath, `O código aponta para “${raw}”, mas o arquivo encontrado é “${caseMatch}”.`, `Use exatamente o nome do arquivo: “${relativeSuggestion(htmlPath, caseMatch)}”.`);
             return;
         }
 
-        technical.brokenReferences += 1;
-        const closest = findClosestPath(resolved, allPaths);
-        const type = reference.critical ? "error" : "warning";
-        const suggestion = closest
-            ? `O arquivo mais parecido encontrado é “${closest}”. Confira se o caminho correto deveria ser “${relativeSuggestion(htmlPath, closest)}”.`
-            : "Confira o nome do arquivo, a pasta onde ele está salvo e a quantidade de ../ usada para voltar pastas.";
-
-        pushDiagnostic(
-            diagnostics,
-            type,
-            `${capitalize(reference.kind)} não encontrado(a)`,
-            htmlPath,
-            `A referência “${raw}” resolve para “${resolved}”, mas esse arquivo não existe na pasta enviada.`,
-            suggestion
-        );
+        const closest = findClosestPath(resolved, paths);
+        const solution = closest
+            ? `O arquivo mais parecido encontrado foi “${closest}”. Confira se o caminho deveria ser “${relativeSuggestion(htmlPath, closest)}”.`
+            : "Confira o nome do arquivo, a pasta onde ele está salvo e a quantidade de ../ usada no caminho.";
+        addDiag(diagnostics, critical ? "error" : "warning", `${capitalize(kind)} não encontrado(a)`, htmlPath, `“${raw}” aponta para “${resolved}”, mas esse arquivo não existe na pasta enviada.`, solution);
     });
 }
 
-function analyzeJavascript(jsPaths, files, jsCombined, htmlIdSet, diagnostics, technical) {
+function analyzeJavaScript(jsPaths, files, jsCombined, allIds, htmlDocs, diagnostics) {
     jsPaths.forEach(path => {
         const content = files.get(path)?.content;
-        if (!content) {
-            pushDiagnostic(diagnostics, "warning", "JavaScript não pôde ser lido", path, "O arquivo existe, mas não foi possível analisar o conteúdo.", "Verifique se o arquivo contém texto JavaScript e não ultrapassa o tamanho necessário para o projeto.");
-            return;
-        }
+        if (!content) return;
 
         if (!/^\s*(?:import|export)\b/m.test(content)) {
-            try {
-                // Analisa a sintaxe sem executar o arquivo.
-                new Function(content);
-            } catch (error) {
-                technical.jsSyntaxErrors += 1;
-                pushDiagnostic(
-                    diagnostics,
-                    "error",
-                    "Possível erro de sintaxe JavaScript",
-                    path,
-                    cleanErrorMessage(error?.message || "O navegador não conseguiu interpretar o arquivo."),
-                    "Abra esse arquivo no VS Code e revise principalmente chaves, parênteses, aspas, vírgulas e blocos que foram adicionados recentemente."
-                );
+            try { new Function(content); }
+            catch (error) {
+                addDiag(diagnostics, "error", "Possível erro de sintaxe JavaScript", path, String(error.message || error).slice(0, 220), "Revise chaves, parênteses, aspas, vírgulas e os blocos adicionados recentemente.");
             }
         }
 
-        const idPatterns = [
+        const regexes = [
             /getElementById\s*\(\s*["'`]([^"'`]+)["'`]\s*\)/g,
             /querySelector\s*\(\s*["'`]#([^"'`\s.:[\]>+~]+)["'`]\s*\)/g
         ];
-
-        idPatterns.forEach(regex => {
+        regexes.forEach(regex => {
             for (const match of content.matchAll(regex)) {
                 const id = match[1];
-                if (!id || htmlIdSet.has(id)) continue;
-                technical.unresolvedIds += 1;
-                pushDiagnostic(
-                    diagnostics,
-                    "warning",
-                    `ID #${id} usado no JavaScript não foi encontrado`,
-                    path,
-                    `O JavaScript procura um elemento com id="${id}", mas nenhum HTML enviado possui esse ID.`,
-                    `Confira se o elemento teve o ID renomeado. Se o JavaScript estiver correto, adicione id="${id}" ao elemento correspondente; se o HTML estiver correto, atualize o seletor no JavaScript.`
-                );
+                if (id && !allIds.has(id)) {
+                    addDiag(diagnostics, "warning", `ID #${id} usado no JavaScript não foi encontrado`, path, `O JavaScript procura id="${id}", mas nenhum HTML enviado possui esse ID.`, `Confira se o ID foi renomeado. Ajuste o HTML ou o seletor JavaScript para que os dois usem o mesmo nome.`);
+                }
             }
         });
     });
 
-    if (!jsPaths.length && jsCombined.trim()) {
-        pushDiagnostic(diagnostics, "success", "JavaScript incorporado ao HTML identificado", "Estrutura do projeto", "Há código JavaScript dentro das páginas HTML.", "Nenhuma correção é necessária neste item.");
-    }
-}
-
-function analyzeInlineHandlers(htmlDocuments, jsCombined, diagnostics, technical) {
-    const ignored = new Set(["alert", "confirm", "prompt", "open", "close", "print", "setTimeout", "setInterval"]);
     const checked = new Set();
-
-    htmlDocuments.forEach(({ path, doc }) => {
+    htmlDocs.forEach(({ path, doc }) => {
         doc.querySelectorAll("*").forEach(element => {
-            Array.from(element.attributes || []).forEach(attribute => {
+            [...element.attributes].forEach(attribute => {
                 if (!attribute.name.toLowerCase().startsWith("on")) return;
-                const handler = attribute.value || "";
-                const calls = Array.from(handler.matchAll(/\b([A-Za-z_$][\w$]*)\s*\(/g)).map(match => match[1]);
-
-                calls.forEach(name => {
-                    if (ignored.has(name) || checked.has(`${path}:${name}`)) return;
-                    checked.add(`${path}:${name}`);
-                    if (hasFunctionDefinition(jsCombined, name)) return;
-
-                    technical.unresolvedFunctions += 1;
-                    pushDiagnostic(
-                        diagnostics,
-                        "error",
-                        `Função ${name}() não foi encontrada`,
-                        path,
-                        `O HTML chama ${name}(), mas o CodeFix não localizou a definição dessa função nos arquivos JavaScript enviados.`,
-                        `Procure por “function ${name}” no seu projeto. Se a função foi renomeada, atualize o evento no HTML; se ela foi apagada, restaure a lógica correspondente no JavaScript.`
-                    );
-                });
+                for (const match of attribute.value.matchAll(/\b([A-Za-z_$][\w$]*)\s*\(/g)) {
+                    const name = match[1];
+                    const key = `${path}:${name}`;
+                    if (checked.has(key) || ["alert", "confirm", "prompt", "open", "print", "setTimeout", "setInterval"].includes(name)) continue;
+                    checked.add(key);
+                    if (!hasFunction(jsCombined, name)) {
+                        addDiag(diagnostics, "error", `Função ${name}() não foi encontrada`, path, `O HTML chama ${name}(), mas não encontrei essa função nos JavaScripts enviados.`, `Procure por “function ${name}” no projeto. Se ela foi renomeada, atualize o HTML; se foi apagada, restaure a lógica correspondente.`);
+                    }
+                }
             });
         });
     });
 }
 
-function analyzeCss(cssPaths, files, diagnostics, technical) {
+function analyzeCss(cssPaths, files, diagnostics) {
     cssPaths.forEach(path => {
         const content = files.get(path)?.content;
         if (!content) return;
-        const stripped = content.replace(/\/\*[\s\S]*?\*\//g, "");
-        const openings = (stripped.match(/\{/g) || []).length;
-        const closings = (stripped.match(/\}/g) || []).length;
-        if (openings !== closings) {
-            technical.cssBraceProblems += 1;
-            pushDiagnostic(
-                diagnostics,
-                "warning",
-                "Quantidade de chaves CSS não confere",
-                path,
-                `Foram encontradas ${openings} chave(s) de abertura e ${closings} de fechamento.`,
-                "Revise os blocos CSS adicionados recentemente e confira se cada { possui uma chave } correspondente."
-            );
-        }
+        const clean = content.replace(/\/\*[\s\S]*?\*\//g, "");
+        const open = (clean.match(/\{/g) || []).length;
+        const close = (clean.match(/\}/g) || []).length;
+        if (open !== close) addDiag(diagnostics, "warning", "Quantidade de chaves CSS não confere", path, `Foram encontradas ${open} chaves de abertura e ${close} de fechamento.`, "Revise os blocos CSS e confira se cada { possui uma } correspondente.");
     });
 }
 
-function addAggregateTechnicalDiagnostics(diagnostics, inventory, technical) {
-    if (inventory.css.length) {
-        pushDiagnostic(diagnostics, "success", "Arquivos CSS encontrados", "Estrutura do projeto", `${inventory.css.length} arquivo(s) de estilo identificado(s).`, "Nenhuma correção é necessária neste item.");
-    }
-    if (inventory.js.length) {
-        pushDiagnostic(diagnostics, "success", "Arquivos JavaScript encontrados", "Estrutura do projeto", `${inventory.js.length} arquivo(s) JavaScript identificado(s).`, "Nenhuma correção é necessária neste item.");
-    }
-    if (inventory.images.length) {
-        pushDiagnostic(diagnostics, "success", "Imagens do projeto encontradas", "Estrutura do projeto", `${inventory.images.length} arquivo(s) de imagem identificado(s).`, "Nenhuma correção é necessária neste item.");
-    }
-
-    if (technical.brokenReferences === 0) {
-        pushDiagnostic(diagnostics, "success", "Nenhum caminho quebrado identificado", "Referências entre arquivos", "CSS, scripts, imagens e links locais analisados não apresentaram caminhos inexistentes.", "Nenhuma correção é necessária neste item.");
-    }
-    if (technical.jsSyntaxErrors === 0 && inventory.js.length) {
-        pushDiagnostic(diagnostics, "success", "Sintaxe básica do JavaScript aprovada", "JavaScript", "Nenhum erro básico de sintaxe foi identificado nos arquivos JavaScript analisados.", "Nenhuma correção é necessária neste item.");
-    }
-    if (technical.unresolvedFunctions === 0) {
-        pushDiagnostic(diagnostics, "success", "Funções chamadas pelo HTML localizadas", "HTML + JavaScript", "As funções identificadas em eventos inline possuem definição correspondente no código analisado.", "Nenhuma correção é necessária neste item.");
-    }
-}
-
 function detectFeatures(files) {
-    const inventory = buildInventory(files);
-    const htmlText = inventory.html.map(path => files.get(path)?.content || "").join("\n").toLowerCase();
-    const jsText = inventory.js.map(path => files.get(path)?.content || "").join("\n").toLowerCase();
-    const allText = `${htmlText}\n${jsText}`;
-
-    let localHtmlLinks = 0;
+    const inv = buildInventory(files);
+    const html = inv.html.map(path => files.get(path)?.content || "").join("\n").toLowerCase();
+    const js = inv.js.map(path => files.get(path)?.content || "").join("\n").toLowerCase();
+    const all = `${html}\n${js}`;
+    let htmlLinks = 0;
     let searchInputs = 0;
     let productSignals = 0;
 
-    inventory.html.forEach(path => {
+    inv.html.forEach(path => {
         const content = files.get(path)?.content;
         if (!content) return;
         const doc = new DOMParser().parseFromString(content, "text/html");
-        doc.querySelectorAll("a[href]").forEach(anchor => {
-            const href = (anchor.getAttribute("href") || "").toLowerCase();
-            if (href.includes(".html") && !isExternalOrSpecialReference(href)) localHtmlLinks += 1;
+        doc.querySelectorAll("a[href]").forEach(a => {
+            const href = (a.getAttribute("href") || "").toLowerCase();
+            if (href.includes(".html") && !isExternalOrSpecial(href)) htmlLinks += 1;
         });
         doc.querySelectorAll('input[type="search"], input[type="text"]').forEach(input => {
             const signal = `${input.id} ${input.className} ${input.getAttribute("placeholder") || ""}`.toLowerCase();
             if (/pesquis|busc|procur|search/.test(signal)) searchInputs += 1;
         });
-        doc.querySelectorAll("article, .produto, [class*='produto'], [class*='product'], [data-categoria], [data-category]").forEach(() => {
-            productSignals += 1;
-        });
+        productSignals += doc.querySelectorAll("article, .produto, [class*='produto'], [class*='product'], [data-categoria], [data-category]").length;
     });
 
-    const hasPriceSignal = /r\$\s*\d|pre[cç]o|price/.test(allText);
-    const hasProductWord = /produto|product/.test(allText);
-    const hasSearchLogic = /includes\s*\(|filter\s*\(|toLowerCase\s*\(|filtrar|pesquis|buscar/.test(jsText);
-    const hasCategoryMarkup = /data-categoria|data-category|categoria|category/.test(allText);
-    const hasCategoryLogic = /dataset\.(categoria|category)|filtrarcategoria|categoria\s*===|category\s*===/.test(jsText);
-    const hasDetailTransport = /urlsearchparams|location\.search|\?id=|searchparams|parametros\.get|params\.get/.test(jsText);
-    const hasDetailWords = /descri[cç][aã]o|modelo|varia[cç][aã]o|tamanho|detalhe/.test(allText);
-    const hasPromo = /promo[cç][aã]|oferta|desconto/.test(allText);
-    const hasCarousel = /carrossel|carousel|movercarrossel|slide/.test(allText);
-    const hasContact = /contato|contact|type=["']email["']|mailto:|telefone|whatsapp/.test(allText);
-    const hasVariations = /varia[cç][aã]|tamanho|modelo|cor selecion|op[cç][aã]o/.test(allText);
-
     return {
-        structure: inventory.html.length > 0 && inventory.css.length > 0 && (inventory.js.length > 0 || /<script[\s>]/.test(htmlText)),
-        navigation: inventory.html.length >= 2 && localHtmlLinks >= 2,
-        products: hasProductWord && hasPriceSignal && (productSignals >= 2 || /produtos\s*=|const\s+produtos|let\s+produtos/.test(jsText)),
-        search: searchInputs > 0 && hasSearchLogic,
-        categories: hasCategoryMarkup && hasCategoryLogic,
-        productDetail: hasDetailTransport && hasDetailWords,
-        variations: hasVariations,
-        promotions: hasPromo,
-        carousel: hasCarousel,
-        contact: hasContact,
-        lazy: /loading\s*=\s*["']lazy["']/.test(htmlText)
+        structure: inv.html.length > 0 && inv.css.length > 0 && (inv.js.length > 0 || /<script[\s>]/.test(html)),
+        navigation: inv.html.length >= 2 && htmlLinks >= 2,
+        products: /produto|product/.test(all) && (/r\$\s*\d|pre[cç]o|price/.test(all)) && (productSignals >= 2 || /const\s+produtos|let\s+produtos|produtos\s*=/.test(js)),
+        search: searchInputs > 0 && /includes\s*\(|filter\s*\(|tolowercase\s*\(|filtrar|pesquis|buscar/.test(js),
+        categories: /data-categoria|data-category|categoria|category/.test(all) && /dataset\.(categoria|category)|filtrarcategoria|categoria\s*===|category\s*===/.test(js),
+        productDetail: /urlsearchparams|location\.search|\?id=|params\.get|parametros\.get/.test(js) && /descri[cç][aã]o|modelo|varia[cç][aã]o|tamanho|detalhe/.test(all),
+        variations: /varia[cç][aã]|tamanho|modelo|cor selecion|op[cç][aã]o/.test(all),
+        promotions: /promo[cç][aã]|oferta|desconto/.test(all),
+        carousel: /carrossel|carousel|movercarrossel|slide/.test(all),
+        contact: /contato|contact|type=["']email["']|mailto:|telefone|whatsapp/.test(all),
+        lazy: /loading\s*=\s*["']lazy["']/.test(html)
     };
 }
 
-function calculateScore(counts, requirementCount) {
-    const baseline = Math.max(10, requirementCount + 7);
-    const penalty = counts.error * 8 + counts.warning * 3;
-    return Math.max(0, Math.min(100, Math.round(100 - (penalty / baseline) * 10)));
-}
-
 function renderResults(result) {
-    const studentLabel = els.studentName.value.trim();
-    els.resultProjectName.textContent = studentLabel || state.selected.name;
-
-    const refVersion = state.reference.sha ? state.reference.sha.slice(0, 7) : "referência local";
-    els.resultReferenceInfo.textContent = state.reference.online
-        ? `Comparado com os recursos identificados na versão ${refVersion} do projeto-base do professor.`
-        : "Comparado com a última referência conhecida do projeto-base do professor.";
+    const label = els.studentName?.value.trim();
+    els.resultProjectName.textContent = label || state.selected.name;
+    els.resultReferenceInfo.textContent = state.reference.online && state.reference.sha
+        ? `Comparado com a versão ${state.reference.sha.slice(0, 7)} do projeto-base do professor.`
+        : "Comparado com os requisitos conhecidos do projeto-base do professor.";
 
     els.scoreValue.textContent = `${result.score}%`;
     requestAnimationFrame(() => { els.scoreBar.style.width = `${result.score}%`; });
@@ -802,27 +641,36 @@ function renderResults(result) {
     els.analyzeBtn.disabled = false;
 }
 
-function renderFileSummary(inventory) {
-    const rows = [
-        ["HTML", inventory.html.length],
-        ["CSS", inventory.css.length],
-        ["JavaScript", inventory.js.length],
-        ["Imagens", inventory.images.length],
-        ["Outros", inventory.other.length],
-        ["Total", inventory.total]
-    ];
-
-    els.fileSummary.innerHTML = rows.map(([label, value]) => `
-        <div class="summary-row"><span>${escapeHTML(label)}</span><strong>${value}</strong></div>
-    `).join("");
-}
-
-function renderRequirementsSummary(requirements) {
-    if (!requirements.length) {
-        els.requirementsSummary.innerHTML = '<div class="empty-state">Nenhum requisito de referência disponível.</div>';
+function renderDiagnostics() {
+    const filter = els.diagnosticFilter?.value || "all";
+    const list = filter === "all" ? state.diagnostics : state.diagnostics.filter(item => item.type === filter);
+    if (!list.length) {
+        els.diagnosticsList.innerHTML = '<div class="empty-state">Nenhum diagnóstico nesta categoria.</div>';
         return;
     }
 
+    els.diagnosticsList.innerHTML = list.map(item => `
+        <article class="diagnostic-card ${item.type}">
+            <div class="diagnostic-top">
+                <span class="diagnostic-status">${item.type === "error" ? "ERRO" : item.type === "warning" ? "ATENÇÃO" : "APROVADO"}</span>
+                <span class="diagnostic-file">${escapeHTML(item.location)}</span>
+            </div>
+            <h3>${escapeHTML(item.title)}</h3>
+            <p>${escapeHTML(item.explanation)}</p>
+            <div class="solution-box">
+                <strong>${item.type === "success" ? "RESULTADO" : "COMO CORRIGIR"}</strong>
+                <p>${escapeHTML(item.solution)}</p>
+            </div>
+        </article>
+    `).join("");
+}
+
+function renderFileSummary(inv) {
+    const rows = [["HTML", inv.html.length], ["CSS", inv.css.length], ["JavaScript", inv.js.length], ["Imagens", inv.images.length], ["Outros", inv.other.length], ["Total", inv.total]];
+    els.fileSummary.innerHTML = rows.map(([label, value]) => `<div class="summary-row"><span>${label}</span><strong>${value}</strong></div>`).join("");
+}
+
+function renderRequirementsSummary(requirements) {
     els.requirementsSummary.innerHTML = requirements.map(item => `
         <div class="requirement-row">
             <span>${escapeHTML(item.label)}</span>
@@ -831,136 +679,98 @@ function renderRequirementsSummary(requirements) {
     `).join("");
 }
 
-function renderDiagnostics() {
-    const filter = els.diagnosticFilter.value;
-    const items = state.diagnostics.filter(item => filter === "all" || item.type === filter);
-
-    if (!items.length) {
-        els.diagnosticsList.innerHTML = '<div class="empty-state">Nenhum diagnóstico neste filtro.</div>';
-        return;
-    }
-
-    const labels = { error: "Erro", warning: "Atenção", success: "Aprovado" };
-    els.diagnosticsList.innerHTML = items.map((item, index) => `
-        <article class="diagnostic-card ${item.type}${index === 0 && item.type !== "success" ? " open" : ""}">
-            <button class="diagnostic-head" type="button" aria-expanded="${index === 0 && item.type !== "success" ? "true" : "false"}">
-                <div>
-                    <span class="status-label ${item.type}">${labels[item.type]}</span>
-                    <h3>${escapeHTML(item.title)}</h3>
-                    <p>${escapeHTML(shorten(item.detail, 145))}</p>
-                </div>
-                <span aria-hidden="true">+</span>
-            </button>
-            <div class="diagnostic-body">
-                <span class="location">${escapeHTML(item.location)}</span>
-                <p>${escapeHTML(item.detail)}</p>
-                <div class="solution-box">
-                    <strong>COMO CORRIGIR</strong>
-                    <p>${escapeHTML(item.solution)}</p>
-                </div>
-            </div>
-        </article>
-    `).join("");
-
-    els.diagnosticsList.querySelectorAll(".diagnostic-head").forEach(button => {
-        button.addEventListener("click", () => {
-            const card = button.closest(".diagnostic-card");
-            const isOpen = card.classList.toggle("open");
-            button.setAttribute("aria-expanded", String(isOpen));
-        });
-    });
-}
-
 function resetForNewAnalysis() {
+    state.selected = null;
+    state.analysis = null;
+    state.diagnostics = [];
+    els.zipInput.value = "";
+    els.folderInput.value = "";
+    els.selectedProject.classList.add("hidden");
+    els.analyzeBtn.disabled = true;
     els.resultsSection.classList.add("hidden");
-    document.getElementById("analisador").scrollIntoView({ behavior: "smooth", block: "start" });
-    els.analyzeBtn.disabled = !state.selected;
+    setUploadMessage("Selecione outro .ZIP ou outra pasta para analisar.", false);
+    document.getElementById("analisador")?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-function pushDiagnostic(list, type, title, location, detail, solution) {
-    list.push({ type, title, location, detail, solution });
+function buildInventory(files) {
+    const inv = { total: files.size, html: [], css: [], js: [], images: [], other: [] };
+    for (const path of files.keys()) {
+        const ext = getExtension(path);
+        if (["html", "htm"].includes(ext)) inv.html.push(path);
+        else if (ext === "css") inv.css.push(path);
+        else if (["js", "mjs"].includes(ext)) inv.js.push(path);
+        else if (IMAGE_EXTENSIONS.has(ext)) inv.images.push(path);
+        else inv.other.push(path);
+    }
+    return inv;
 }
 
-function hasFunctionDefinition(code, name) {
-    if (!code) return false;
+function addDiag(list, type, title, location, explanation, solution) {
+    list.push({ type, title, location, explanation, solution });
+}
+
+function setUploadMessage(message, isError) {
+    if (!els.uploadMessage) return;
+    els.uploadMessage.textContent = message;
+    els.uploadMessage.classList.toggle("error", Boolean(isError));
+}
+
+function hasFunction(source, name) {
     const escaped = escapeRegex(name);
-    const patterns = [
-        new RegExp(`function\\s+${escaped}\\s*\\(`),
-        new RegExp(`(?:const|let|var)\\s+${escaped}\\s*=\\s*(?:function\\b|(?:async\\s*)?\\([^)]*\\)\\s*=>|(?:async\\s*)?[A-Za-z_$][\\w$]*\\s*=>)`),
-        new RegExp(`(?:window\\.)?${escaped}\\s*=\\s*function\\b`)
-    ];
-    return patterns.some(regex => regex.test(code));
+    return new RegExp(`(?:function\\s+${escaped}\\s*\\(|(?:const|let|var)\\s+${escaped}\\s*=|${escaped}\\s*=\\s*(?:function|\\([^)]*\\)\\s*=>))`).test(source);
 }
 
-function isExternalOrSpecialReference(value) {
-    if (!value) return true;
-    return /^(?:https?:|mailto:|tel:|data:|blob:|javascript:|#)/i.test(value) || value.startsWith("//");
+function isExternalOrSpecial(value) {
+    const v = String(value || "").trim().toLowerCase();
+    return !v || v.startsWith("http://") || v.startsWith("https://") || v.startsWith("//") || v.startsWith("data:") || v.startsWith("mailto:") || v.startsWith("tel:") || v.startsWith("javascript:") || v.startsWith("#");
 }
 
-function resolveRelativePath(baseFile, rawReference) {
-    if (!rawReference || isExternalOrSpecialReference(rawReference)) return null;
-    const clean = safeDecode(rawReference.split("#")[0].split("?")[0].replace(/\\/g, "/").trim());
+function resolveRelativePath(baseFile, raw) {
+    const clean = safeDecode(String(raw).split("#")[0].split("?")[0].replace(/\\/g, "/").trim());
     if (!clean) return null;
-
-    const baseParts = normalizePath(baseFile).split("/");
-    baseParts.pop();
-    const targetParts = clean.startsWith("/") ? [] : baseParts;
-
+    const parts = clean.startsWith("/") ? [] : normalizePath(baseFile).split("/").slice(0, -1);
     clean.split("/").forEach(part => {
         if (!part || part === ".") return;
-        if (part === "..") targetParts.pop();
-        else targetParts.push(part);
+        if (part === "..") parts.pop();
+        else parts.push(part);
     });
-
-    return normalizePath(targetParts.join("/"));
+    return normalizePath(parts.join("/"));
 }
 
 function relativeSuggestion(fromFile, targetFile) {
-    const from = normalizePath(fromFile).split("/");
-    from.pop();
+    const from = normalizePath(fromFile).split("/").slice(0, -1);
     const target = normalizePath(targetFile).split("/");
     let common = 0;
     while (common < from.length && common < target.length && from[common] === target[common]) common += 1;
-    const up = from.slice(common).map(() => "..");
-    return [...up, ...target.slice(common)].join("/") || targetFile;
+    return [...from.slice(common).map(() => ".."), ...target.slice(common)].join("/") || targetFile;
 }
 
 function findClosestPath(target, paths) {
-    const targetBase = basename(target).toLowerCase();
-    const exactBase = paths.find(path => basename(path).toLowerCase() === targetBase);
+    const base = basename(target).toLowerCase();
+    const exactBase = paths.find(path => basename(path).toLowerCase() === base);
     if (exactBase) return exactBase;
-
     const ext = getExtension(target);
-    const candidates = paths.filter(path => getExtension(path) === ext);
+    const sameExt = paths.filter(path => getExtension(path) === ext).slice(0, 150);
     let best = null;
-    let bestScore = Infinity;
-
-    candidates.slice(0, 200).forEach(path => {
-        const score = levenshtein(target.toLowerCase(), path.toLowerCase());
-        if (score < bestScore) {
-            bestScore = score;
-            best = path;
-        }
+    let score = Infinity;
+    sameExt.forEach(path => {
+        const current = levenshtein(target.toLowerCase(), path.toLowerCase());
+        if (current < score) { score = current; best = path; }
     });
-
-    const threshold = Math.max(4, Math.floor(target.length * 0.35));
-    return bestScore <= threshold ? best : null;
+    return score <= Math.max(4, Math.floor(target.length * 0.35)) ? best : null;
 }
 
 function stripCommonRoot(files) {
-    const paths = Array.from(files.keys());
-    if (!paths.length) return files;
-    const firstSegments = paths.map(path => path.split("/")[0]).filter(Boolean);
-    const first = firstSegments[0];
-    if (!first || !firstSegments.every(segment => segment === first)) return files;
-    if (paths.some(path => !path.includes("/"))) return files;
-
-    const stripped = new Map();
-    for (const [path, record] of files.entries()) {
+    const paths = [...files.keys()];
+    if (!paths.length || paths.some(path => !path.includes("/"))) return files;
+    const first = paths[0].split("/")[0];
+    if (!paths.every(path => path.split("/")[0] === first)) return files;
+    const result = new Map();
+    files.forEach((record, path) => {
         const nextPath = path.split("/").slice(1).join("/");
-        stripped.set(nextPath, { ...record, path: nextPath });
-    }
-    return stripped;
+        if (nextPath) result.set(nextPath, { ...record, path: nextPath });
+    });
+    return result;
 }
 
 function detectTopFolder(paths) {
@@ -971,15 +781,12 @@ function detectTopFolder(paths) {
 }
 
 function shouldIgnorePath(path) {
-    const normalized = normalizePath(path);
-    const parts = normalized.split("/");
-    return parts.some(part => IGNORED_PARTS.has(part) || part === ".DS_Store" || part === "Thumbs.db");
+    return normalizePath(path).split("/").some(part => IGNORED_PARTS.has(part) || part === ".DS_Store" || part === "Thumbs.db");
 }
 
 function normalizePath(path) {
-    const parts = String(path || "").replace(/\\/g, "/").split("/");
     const out = [];
-    parts.forEach(part => {
+    String(path || "").replace(/\\/g, "/").split("/").forEach(part => {
         if (!part || part === ".") return;
         if (part === "..") out.pop();
         else out.push(part);
@@ -987,79 +794,26 @@ function normalizePath(path) {
     return out.join("/");
 }
 
-function encodePathForUrl(path) {
-    return normalizePath(path).split("/").map(part => encodeURIComponent(part)).join("/");
-}
-
-function getExtension(path) {
-    const name = basename(path);
-    if (!name.includes(".")) return "";
-    return name.split(".").pop().toLowerCase();
-}
-
-function basename(path) {
-    return normalizePath(path).split("/").pop() || "";
-}
-
-function capitalize(text) {
-    return text ? text.charAt(0).toUpperCase() + text.slice(1) : text;
-}
-
-function cleanErrorMessage(message) {
-    return String(message).replace(/^Uncaught\s+/i, "").slice(0, 220);
-}
-
-function scoreMessage(score, errors) {
-    if (score >= 92 && errors === 0) return "Projeto muito consistente com os recursos analisados.";
-    if (score >= 80) return "Projeto bem encaminhado. Revise os itens destacados.";
-    if (score >= 60) return "Há pontos importantes para corrigir antes de considerar o projeto concluído.";
-    return "O projeto precisa de revisão. Comece pelos erros em vermelho e analise novamente depois.";
-}
-
-function shorten(text, max) {
-    const value = String(text || "");
-    return value.length > max ? `${value.slice(0, max - 1)}…` : value;
-}
-
-function safeDecode(value) {
-    try {
-        return decodeURIComponent(value);
-    } catch (_) {
-        return value;
-    }
-}
-
-function escapeRegex(value) {
-    return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function escapeHTML(value) {
-    return String(value ?? "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-}
+function encodePathForUrl(path) { return normalizePath(path).split("/").map(encodeURIComponent).join("/"); }
+function getExtension(path) { const name = basename(path); return name.includes(".") ? name.split(".").pop().toLowerCase() : ""; }
+function basename(path) { return normalizePath(path).split("/").pop() || ""; }
+function capitalize(text) { return text ? text[0].toUpperCase() + text.slice(1) : text; }
+function safeDecode(value) { try { return decodeURIComponent(value); } catch { return value; } }
+function escapeRegex(value) { return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
+function escapeHTML(value) { return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\"/g, "&quot;").replace(/'/g, "&#039;"); }
+function scoreMessage(score, errors) { if (score >= 92 && errors === 0) return "Projeto muito consistente com os recursos analisados."; if (score >= 80) return "Projeto bem encaminhado. Revise os itens destacados."; if (score >= 60) return "Há pontos importantes para corrigir antes de concluir."; return "Comece corrigindo os erros em vermelho e analise novamente depois."; }
+function nextPaint() { return new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))); }
 
 function levenshtein(a, b) {
-    const matrix = Array.from({ length: b.length + 1 }, () => new Array(a.length + 1).fill(0));
-    for (let i = 0; i <= a.length; i += 1) matrix[0][i] = i;
-    for (let j = 0; j <= b.length; j += 1) matrix[j][0] = j;
-
+    const row = Array.from({ length: a.length + 1 }, (_, i) => i);
     for (let j = 1; j <= b.length; j += 1) {
+        let prev = row[0];
+        row[0] = j;
         for (let i = 1; i <= a.length; i += 1) {
-            const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-            matrix[j][i] = Math.min(
-                matrix[j - 1][i] + 1,
-                matrix[j][i - 1] + 1,
-                matrix[j - 1][i - 1] + cost
-            );
+            const temp = row[i];
+            row[i] = Math.min(row[i] + 1, row[i - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1));
+            prev = temp;
         }
     }
-    return matrix[b.length][a.length];
-}
-
-function nextPaint() {
-    return new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    return row[a.length];
 }
