@@ -5,16 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="CodeFix EDU - analisador pedagógico de projetos web.">
     <title>CodeFix EDU | Analise. Entenda. Corrija.</title>
-    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=2">
 </head>
 <body>
     <header class="topbar">
-        <a class="brand" href="#inicio" aria-label="CodeFix EDU - início">
-            <span class="brand-mark">&lt;/&gt;</span>
-            <span>CodeFix <strong>EDU</strong></span>
-        </a>
-        <nav class="topnav" aria-label="Navegação principal">
+        <a class="brand" href="#inicio"><span class="brand-mark">&lt;/&gt;</span><span>CodeFix <strong>EDU</strong></span></a>
+        <nav class="topnav">
             <a href="#como-funciona">Como funciona</a>
             <a href="#referencia">Projeto-base</a>
             <a href="#analisador" class="nav-cta">Analisar projeto</a>
@@ -26,49 +22,27 @@
             <div class="hero-copy">
                 <span class="eyebrow">Assistente de revisão para projetos web</span>
                 <h1>Analise. Entenda. <span>Corrija.</span></h1>
-                <p class="hero-text">
-                    Envie o projeto da sua loja. O CodeFix verifica estrutura, caminhos,
-                    HTML, CSS, JavaScript e funcionalidades esperadas, apontando o problema
-                    e explicando como corrigir sem exigir que seu código seja uma cópia do professor.
-                </p>
+                <p class="hero-text">Envie o projeto da sua loja. O CodeFix verifica estrutura, caminhos, HTML, CSS, JavaScript e funcionalidades esperadas, apontando o problema e explicando como corrigir sem exigir que seu código seja uma cópia do professor.</p>
                 <div class="hero-actions">
                     <a href="#analisador" class="button primary">Analisar meu projeto</a>
                     <a href="#como-funciona" class="button ghost">Entender a análise</a>
                 </div>
-                <div class="privacy-note">
-                    <span class="status-dot"></span>
-                    <span>Seus arquivos são analisados no próprio navegador e não são enviados para um servidor.</span>
-                </div>
+                <div class="privacy-note"><span class="status-dot"></span><span>Seus arquivos são analisados no próprio navegador e não são enviados para um servidor.</span></div>
             </div>
 
-            <aside class="hero-card" aria-label="Exemplo de diagnóstico">
+            <aside class="hero-card">
                 <div class="code-window">
                     <div class="window-bar"><span></span><span></span><span></span></div>
-                    <div class="fake-code">
-                        <p><b>produtos.html</b></p>
-                        <code>&lt;img src="../imagens/camiseta.png"&gt;</code>
-                    </div>
-                    <div class="diagnostic-example danger">
-                        <strong>Erro encontrado</strong>
-                        <p>O caminho da imagem não corresponde a nenhum arquivo do projeto.</p>
-                    </div>
-                    <div class="diagnostic-example success">
-                        <strong>Como corrigir</strong>
-                        <p>Use o nome e a localização reais do arquivo. O CodeFix indica o caminho mais provável.</p>
-                    </div>
+                    <div class="fake-code"><p><b>produtos.html</b></p><code>&lt;img src="../imagens/camiseta.png"&gt;</code></div>
+                    <div class="diagnostic-example danger"><strong>Erro encontrado</strong><p>O caminho da imagem não corresponde a nenhum arquivo do projeto.</p></div>
+                    <div class="diagnostic-example success"><strong>Como corrigir</strong><p>Use o nome e a localização reais do arquivo. O CodeFix indica o caminho mais provável.</p></div>
                 </div>
             </aside>
         </section>
 
         <section class="reference-strip" id="referencia">
-            <div>
-                <span class="mini-label">REFERÊNCIA DO PROFESSOR</span>
-                <strong id="referenceRepo">Prof-Davi-Git/projeto-site-vendas</strong>
-            </div>
-            <div class="reference-status">
-                <span id="referenceBadge" class="badge loading">Sincronizando...</span>
-                <small id="referenceCommit">Buscando versão atual da branch main</small>
-            </div>
+            <div><span class="mini-label">REFERÊNCIA DO PROFESSOR</span><strong id="referenceRepo">Prof-Davi-Git/projeto-site-vendas</strong></div>
+            <div class="reference-status"><span id="referenceBadge" class="badge loading">Sincronizando...</span><small id="referenceCommit">Buscando versão atual da branch main</small></div>
             <button id="syncReferenceBtn" class="button small" type="button">Atualizar referência</button>
         </section>
 
@@ -76,33 +50,13 @@
             <div class="section-heading">
                 <span class="eyebrow">Como funciona</span>
                 <h2>O código pode ser diferente.<br>O que precisa funcionar é o projeto.</h2>
-                <p>
-                    O CodeFix usa o projeto-base para entender o que já foi trabalhado em aula,
-                    mas avalia o projeto do aluno por estrutura e comportamento esperado.
-                </p>
+                <p>O CodeFix usa o projeto-base para entender o que já foi trabalhado em aula, mas avalia o projeto do aluno por estrutura e comportamento esperado.</p>
             </div>
-
             <div class="steps-grid">
-                <article class="step-card">
-                    <span>01</span>
-                    <h3>Envie</h3>
-                    <p>Selecione a pasta inteira do projeto ou envie um arquivo .ZIP.</p>
-                </article>
-                <article class="step-card">
-                    <span>02</span>
-                    <h3>Analise</h3>
-                    <p>O sistema confere arquivos, links, scripts, imagens, IDs, funções e recursos.</p>
-                </article>
-                <article class="step-card">
-                    <span>03</span>
-                    <h3>Entenda</h3>
-                    <p>Cada problema mostra onde foi encontrado e por que pode impedir o site de funcionar.</p>
-                </article>
-                <article class="step-card">
-                    <span>04</span>
-                    <h3>Corrija</h3>
-                    <p>O relatório apresenta uma solução orientada para o aluno tentar a correção.</p>
-                </article>
+                <article class="step-card"><span>01</span><h3>Envie</h3><p>Selecione a pasta inteira do projeto ou envie um arquivo .ZIP.</p></article>
+                <article class="step-card"><span>02</span><h3>Analise</h3><p>O sistema confere arquivos, links, scripts, imagens, IDs, funções e recursos.</p></article>
+                <article class="step-card"><span>03</span><h3>Entenda</h3><p>Cada problema mostra onde foi encontrado e por que pode impedir o site de funcionar.</p></article>
+                <article class="step-card"><span>04</span><h3>Corrija</h3><p>O relatório apresenta uma solução orientada para o aluno tentar a correção.</p></article>
             </div>
         </section>
 
@@ -110,7 +64,7 @@
             <div class="section-heading compact">
                 <span class="eyebrow">Validador inteligente</span>
                 <h2>Envie seu projeto</h2>
-                <p>Use a pasta completa ou compacte o projeto em .ZIP.</p>
+                <p>Você pode usar a pasta já extraída ou um arquivo .ZIP.</p>
             </div>
 
             <div class="analyzer-layout">
@@ -120,28 +74,23 @@
 
                     <div id="dropZone" class="drop-zone" tabindex="0" role="button" aria-label="Selecionar projeto">
                         <div class="upload-icon">↑</div>
-                        <h3>Arraste o .ZIP aqui</h3>
-                        <p>ou escolha uma das opções abaixo</p>
+                        <h3>Envie a pasta ou o .ZIP do projeto</h3>
+                        <p>Escolha uma das opções abaixo</p>
                         <div class="upload-actions">
-                            <button id="chooseZipBtn" class="button primary" type="button">Selecionar .ZIP</button>
-                            <button id="chooseFolderBtn" class="button ghost" type="button">Selecionar pasta</button>
+                            <button id="chooseFolderBtn" class="button primary" type="button">Selecionar pasta</button>
+                            <button id="chooseZipBtn" class="button ghost" type="button">Selecionar .ZIP</button>
                         </div>
-                        <input id="zipInput" type="file" accept=".zip,application/zip" hidden>
-                        <input id="folderInput" type="file" webkitdirectory directory multiple hidden>
+                        <input id="zipInput" type="file" accept=".zip,application/zip,application/x-zip-compressed" hidden>
+                        <input id="folderInput" type="file" webkitdirectory="" directory="" multiple hidden>
                     </div>
 
                     <div id="selectedProject" class="selected-project hidden">
-                        <div>
-                            <span class="mini-label">PROJETO SELECIONADO</span>
-                            <strong id="selectedProjectName">-</strong>
-                        </div>
+                        <div><span class="mini-label">PROJETO RECEBIDO</span><strong id="selectedProjectName">-</strong></div>
                         <span id="selectedProjectCount">0 arquivos</span>
                     </div>
 
-                    <button id="analyzeBtn" class="button analyze-button" type="button" disabled>
-                        Analisar projeto
-                    </button>
-                    <p id="uploadMessage" class="form-message" aria-live="polite"></p>
+                    <button id="analyzeBtn" class="button analyze-button" type="button" disabled>Analisar projeto</button>
+                    <p id="uploadMessage" class="form-message" aria-live="polite">Selecione a pasta principal do projeto ou o arquivo .ZIP.</p>
                 </div>
 
                 <aside class="checks-panel">
@@ -156,66 +105,33 @@
                         <li><span>✓</span> Recursos presentes no projeto-base</li>
                         <li><span>✓</span> Sugestões de correção</li>
                     </ul>
-                    <p class="checks-note">
-                        Nomes de pastas, arquivos, produtos, cores e identidade visual podem ser diferentes do exemplo do professor.
-                    </p>
+                    <p class="checks-note">Nomes de pastas, arquivos, produtos, cores e identidade visual podem ser diferentes do exemplo do professor.</p>
                 </aside>
             </div>
         </section>
 
         <section id="analysisProgress" class="section progress-section hidden" aria-live="polite">
-            <div class="progress-card">
-                <div class="spinner"></div>
-                <div>
-                    <span class="mini-label">ANALISANDO</span>
-                    <h2 id="progressTitle">Lendo os arquivos do projeto...</h2>
-                    <p id="progressText">Verificando a estrutura e preparando o diagnóstico.</p>
-                </div>
-            </div>
+            <div class="progress-card"><div class="spinner"></div><div><span class="mini-label">ANALISANDO</span><h2 id="progressTitle">Lendo os arquivos do projeto...</h2><p id="progressText">Verificando a estrutura e preparando o diagnóstico.</p></div></div>
         </section>
 
         <section id="resultsSection" class="section results-section hidden">
             <div class="results-header">
-                <div>
-                    <span class="eyebrow">Resultado da análise</span>
-                    <h2 id="resultProjectName">Projeto analisado</h2>
-                    <p id="resultReferenceInfo">Comparação pedagógica com a referência atual do professor.</p>
-                </div>
+                <div><span class="eyebrow">Resultado da análise</span><h2 id="resultProjectName">Projeto analisado</h2><p id="resultReferenceInfo">Comparação pedagógica com a referência atual do professor.</p></div>
                 <button id="newAnalysisBtn" class="button ghost" type="button">Analisar novamente</button>
             </div>
 
             <div class="score-grid">
-                <article class="score-card main-score">
-                    <span>Compatibilidade</span>
-                    <strong id="scoreValue">0%</strong>
-                    <div class="score-track"><div id="scoreBar"></div></div>
-                    <small id="scoreMessage">Calculando...</small>
-                </article>
-                <article class="score-card success-card">
-                    <span>Aprovado</span>
-                    <strong id="successCount">0</strong>
-                    <small>verificações sem problema</small>
-                </article>
-                <article class="score-card warning-card">
-                    <span>Atenção</span>
-                    <strong id="warningCount">0</strong>
-                    <small>pontos para revisar</small>
-                </article>
-                <article class="score-card error-card">
-                    <span>Erros</span>
-                    <strong id="errorCount">0</strong>
-                    <small>problemas que precisam de correção</small>
-                </article>
+                <article class="score-card main-score"><span>Compatibilidade</span><strong id="scoreValue">0%</strong><div class="score-track"><div id="scoreBar"></div></div><small id="scoreMessage">Calculando...</small></article>
+                <article class="score-card success-card"><span>Aprovado</span><strong id="successCount">0</strong><small>verificações sem problema</small></article>
+                <article class="score-card warning-card"><span>Atenção</span><strong id="warningCount">0</strong><small>pontos para revisar</small></article>
+                <article class="score-card error-card"><span>Erros</span><strong id="errorCount">0</strong><small>problemas que precisam de correção</small></article>
             </div>
 
             <div class="results-layout">
                 <div class="diagnostics-column">
                     <div class="results-toolbar">
-                        <div>
-                            <span class="mini-label">DIAGNÓSTICOS</span>
-                            <strong id="diagnosticTitle">Problemas e orientações</strong>
-                        </div>
-                        <select id="diagnosticFilter" aria-label="Filtrar diagnósticos">
+                        <div><span class="mini-label">DIAGNÓSTICOS</span><strong>Problemas e orientações</strong></div>
+                        <select id="diagnosticFilter">
                             <option value="all">Todos</option>
                             <option value="error">Somente erros</option>
                             <option value="warning">Atenções</option>
@@ -226,14 +142,8 @@
                 </div>
 
                 <aside class="summary-column">
-                    <div class="summary-card">
-                        <span class="mini-label">ARQUIVOS ENCONTRADOS</span>
-                        <div id="fileSummary" class="file-summary"></div>
-                    </div>
-                    <div class="summary-card">
-                        <span class="mini-label">RECURSOS DO PROJETO-BASE</span>
-                        <div id="requirementsSummary" class="requirements-summary"></div>
-                    </div>
+                    <div class="summary-card"><span class="mini-label">ARQUIVOS ENCONTRADOS</span><div id="fileSummary" class="file-summary"></div></div>
+                    <div class="summary-card"><span class="mini-label">RECURSOS DO PROJETO-BASE</span><div id="requirementsSummary" class="requirements-summary"></div></div>
                 </aside>
             </div>
         </section>
@@ -245,7 +155,6 @@
         <small>Projeto-base: Prof-Davi-Git/projeto-site-vendas</small>
     </footer>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" integrity="sha512-XMVd28F1oH/O71fzwBnV7HucLxVwtxv2JclD0PZl9Q/6XUDpt/XlXVbRiNVKcC4O7iK9R2wKc3jPvQ7N5S+f6g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script src="script.js"></script>
+    <script src="script.js?v=2"></script>
 </body>
 </html>
